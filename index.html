@@ -262,6 +262,31 @@
     }
     .music-btn:not(.paused)::after { animation: ripple 2.2s ease-out infinite; }
     .music-btn:not(.paused) .on { animation: spin 6s linear infinite; }
+    /* welcome screen: the tap that opens the invitation also starts the music */
+    body.locked { overflow: hidden; }
+    .welcome {
+      position: fixed; inset: 0; z-index: 20;
+      background: radial-gradient(ellipse at 50% 35%, #FFFFFF 0%, var(--bg) 75%);
+      border-top: 8px solid var(--bar);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+      transition: opacity .9s ease, transform .9s ease, visibility .9s;
+    }
+    .welcome.gone { opacity: 0; transform: scale(1.06); visibility: hidden; }
+    .welcome .monogram-wrap { margin-bottom: 18px; }
+    .welcome .w-kicker { font-family: var(--font-serif); font-size: 1.2rem; color: var(--text-muted); margin-bottom: 4px; }
+    .welcome .names { margin: 0 0 30px; }
+    .open-btn {
+      font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+      color: #FFFFFF; background: linear-gradient(135deg, #9C7633, #C9A55E 50%, #8A6526);
+      border: none; border-radius: 40px; padding: 14px 38px; cursor: pointer;
+      box-shadow: 0 10px 26px rgba(138, 101, 38, 0.28);
+      display: inline-flex; align-items: center; gap: 10px;
+      animation: glow 2.4s ease-in-out infinite;
+    }
+    .open-btn svg { width: 18px; height: 18px; }
+    .welcome .w-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 14px; opacity: .8; }
+    @keyframes glow { 0%,100% { box-shadow: 0 10px 26px rgba(138,101,38,.28); } 50% { box-shadow: 0 10px 34px rgba(176,138,69,.5); } }
     @keyframes spin   { to { transform: rotate(360deg); } }
     @keyframes ripple { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.5); opacity: 0; } }
 
@@ -271,7 +296,21 @@
     }
   </style>
 </head>
-<body>
+<body class="locked">
+  <div class="welcome" id="welcome">
+    <div class="monogram-wrap"><div class="monogram" role="img" aria-label="ف ل"></div></div>
+    <div class="w-kicker">دعوة خطوبة</div>
+    <div class="names">
+      <span class="n">فارس</span>
+      <span class="amp"><span>&amp;</span></span>
+      <span class="n">لين</span>
+    </div>
+    <button class="open-btn" id="openBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      افتح الدعوة
+    </button>
+    <div class="w-note">♪ مع الموسيقى</div>
+  </div>
   <audio id="music" src="music.mp3" loop preload="auto"></audio>
   <button class="music-btn paused" id="musicBtn" aria-label="تشغيل الموسيقى">
     <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>
@@ -361,14 +400,21 @@
       e.stopPropagation();
       if (music.paused) playMusic(); else music.pause();
     });
-    function firstTap() {
-      document.removeEventListener("pointerdown", firstTap);
-      if (music.paused) playMusic();
-    }
-    document.addEventListener("pointerdown", firstTap);
-    playMusic();
+
+    // Opening the invitation is the tap browsers require before sound can play
+    document.getElementById("openBtn").addEventListener("click", function () {
+      playMusic();
+      document.getElementById("welcome").classList.add("gone");
+      document.body.classList.remove("locked");
+      setTimeout(startReveal, 350);
+    });
+
     // Entrance: reveal elements one after another as they scroll into view
-    var io = new IntersectionObserver(function (entries) {
+    var io;
+    function startReveal() {
+      document.querySelectorAll(".card .reveal").forEach(function (el) { io.observe(el); });
+    }
+    io = new IntersectionObserver(function (entries) {
       var delay = 0;
       entries.forEach(function (e) {
         if (!e.isIntersecting) return;
@@ -378,7 +424,6 @@
         io.unobserve(e.target);
       });
     }, { threshold: 0.15 });
-    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
 
     // Countdown (Jordan time, UTC+3)
     var target = new Date("2026-11-19T20:00:00+03:00").getTime();
